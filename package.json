@@ -1,0 +1,8 @@
+{
+  "name": "wealth-os",
+  "version": "1.0.0",
+  "description": "Wealth OS - Cold Email Agency Agent Network",
+  "engines": {
+    "node": "18.x"
+  }
+}
