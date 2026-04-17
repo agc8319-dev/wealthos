@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WEALTH OS â Cold Email Agency</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #08080D;
+      --bg2:      #0C0C16;
+      --bg3:      #060610;
+      --green:    #00FF87;
+      --yellow:   #FFE600;
+      --orange:   #FF6B35;
+      --purple:   #A78BFA;
+      --blue:     #38BDF8;
+      --border:   #ffffff0F;
+      --text:     #E8E8E8;
+      --muted:    #ffffff33;
+      --dim:      #ffffff18;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      min-height: 100vh;
+    }
+
+    /* Scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      background-image: repeating-linear-gradient(
+        0deg, transparent, transparent 3px,
+        rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px
+      );
+    }
+
+    /* ââ TOPBAR ââ */
+    #topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: #08080Def;
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #00FF8720;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 50px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .pulse-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+    .pulse-dot.running { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); animation: pulse 0.6s infinite; }
+    .topbar-title  { font-size: 11px; color: var(--green); letter-spacing: 0.3em; font-weight: 700; }
+    .topbar-sub    { font-size: 8px;  color: var(--dim);   letter-spacing: 0.15em; }
+    .topbar-right  { display: flex; align-items: center; gap: 12px; font-size: 9px; }
+    .badge {
+      background: #FFE60010; border: 1px solid #FFE60044;
+      border-radius: 3px; padding: 3px 9px;
+      color: var(--yellow); cursor: pointer;
+    }
+    .badge.green { background: #00FF8710; border-color: #00FF8744; color: var(--green); }
+
+    /* ââ NAV ââ */
+    #nav {
+      display: flex; border-bottom: 1px solid var(--border);
+      padding: 0 24px; background: var(--bg);
+      position: sticky; top: 50px; z-index: 99;
+    }
+    .nav-btn {
+      background: none; border: none; cursor: pointer;
+      padding: 10px 16px; font-family: inherit;
+      font-size: 9px; letter-spacing: 0.2em;
+      color: var(--muted); border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .nav-btn.active { color: var(--green); border-bottom-color: var(--green); }
+
+    /* ââ MAIN ââ */
+    #main { padding: 20px 24px; max-width: 1000px; }
+
+    /* ââ TABS ââ */
+    .tab { display: none; }
+    .tab.active { display: block; }
+
+    /* ââ STAT GRID ââ */
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 10px; margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 5px; padding: 12px 14px;
+    }
+    .stat-label { font-size: 8px; color: var(--dim); letter-spacing: 0.2em; margin-bottom: 5px; }
+    .stat-value { font-size: 22px; font-weight: 700; line-height: 1; }
+    .stat-sub   { font-size: 9px; color: var(--dim); margin-top: 3px; }
+
+    /* ââ AGENT GRID ââ */
+    .agent-grid {
+      display: grid; grid-template-columns: repeat(5,1fr);
+      gap: 8px; margin-bottom: 18px;
+    }
+    .agent-card {
+      background: var(--bg2); border: 1px solid var(--dim);
+      border-radius: 5px; padding: 11px 8px; text-align: center;
+      transition: all 0.3s;
+    }
+    .agent-icon  { font-size: 17px; margin-bottom: 5px; }
+    .agent-name  { font-size: 8px; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 5px; }
+    .agent-badge {
+      font-size: 7px; padding: 2px 5px; border-radius: 2px;
+      display: inline-block; letter-spacing: 0.1em; border: 1px solid;
+    }
+
+    /* Status colors */
+    .s-idle    { color: var(--muted);  border-color: var(--dim);    background: transparent; }
+    .s-running { color: var(--blue);   border-color: var(--blue);   background: #38BDF812; animation: pulse 0.7s infinite; }
+    .s-done    { color: var(--green);  border-color: var(--green);  background: #00FF8712; }
+    .s-error   { color: var(--orange); border-color: var(--orange); background: #FF6B3512; }
+
+    /* ââ RUN BUTTON ââ */
+    .run-wrap { text-align: center; padding: 24px 0 18px; }
+    #run-btn {
+      background: linear-gradient(135deg, #00FF8718, #38BDF818);
+      border: 1px solid var(--green); border-radius: 5px;
+      padding: 15px 52px; cursor: pointer;
+      font-family: inherit; font-size: 11px; letter-spacing: 0.3em;
+      color: var(--green); box-shadow: 0 0 30px #00FF8718;
+      transition: all 0.2s;
+    }
+    #run-btn:hover { box-shadow: 0 0 50px #00FF8735; }
+    #run-btn:disabled {
+      background: #ffffff06; border-color: var(--dim);
+      color: var(--muted); cursor: not-allowed; box-shadow: none;
+    }
+    .run-sub { font-size: 8px; color: var(--dim); margin-top: 8px; letter-spacing: 0.15em; }
+
+    /* ââ ARCH BOX ââ */
+    .arch-box {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 5px; padding: 14px 16px;
+    }
+    .arch-label { font-size: 8px; color: var(--dim); letter-spacing: 0.2em; margin-bottom: 10px; }
+    .arch-flow  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .arch-node  {
+      background: var(--bg3); border-radius: 3px;
+      padding: 5px 10px; font-size: 9px; letter-spacing: 0.08em;
+      border: 1px solid var(--dim); color: var(--muted);
+    }
+    .arch-arrow { color: var(--dim); font-size: 10px; }
+
+    /* ââ REPORT CARDS ââ */
+    .report-card {
+      background: var(--bg2); border-radius: 6px;
+      padding: 16px; margin-bottom: 10px;
+      border: 1px solid var(--dim); transition: border-color 0.3s;
+    }
+    .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .report-title  { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; }
+    .report-body {
+      background: var(--bg3); border: 1px solid #ffffff06;
+      border-radius: 4px; padding: 12px;
+      font-size: 10px; color: #cccccc; line-height: 1.75;
+      white-space: pre-wrap; max-height: 300px;
+      overflow-y: auto;
+    }
+    .report-empty { font-size: 10px; color: var(--dim); padding: 10px 0; }
+
+    /* ââ LOG ââ */
+    .log-box {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 5px; padding: 13px;
+      min-height: 280px; max-height: 480px; overflow-y: auto;
+    }
+    .log-entry { display: flex; gap: 10px; margin-bottom: 4px; font-size: 10px; }
+    .log-time  { color: var(--dim); min-width: 78px; flex-shrink: 0; }
+
+    /* ââ APPROVALS ââ */
+    .approval-card {
+      background: var(--bg2); border-radius: 5px;
+      padding: 15px; margin-bottom: 10px;
+    }
+    .approval-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .approval-amount { font-size: 20px; font-weight: 700; color: var(--yellow); }
+    .approval-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-approve, .btn-deny {
+      border-radius: 3px; padding: 7px 14px; cursor: pointer;
+      font-size: 9px; letter-spacing: 0.15em; font-family: inherit;
+      border: 1px solid; transition: all 0.15s;
+    }
+    .btn-approve { background: #00FF8710; border-color: var(--green); color: var(--green); }
+    .btn-approve:hover { background: #00FF8725; }
+    .btn-deny    { background: #FF6B3510; border-color: var(--orange); color: var(--orange); }
+    .btn-deny:hover { background: #FF6B3525; }
+
+    .info-box {
+      background: #ffffff04; border-radius: 3px;
+      padding: 10px; margin-bottom: 8px;
+    }
+    .info-label { font-size: 8px; color: var(--dim); letter-spacing: 0.1em; margin-bottom: 3px; }
+    .coo-box {
+      background: #FFE60008; border: 1px solid #FFE60018;
+      border-radius: 3px; padding: 8px 10px; margin-bottom: 10px;
+    }
+    .coo-label { font-size: 8px; color: var(--yellow); letter-spacing: 0.1em; margin-bottom: 3px; }
+
+    /* ââ CHAIN ââ */
+    .chain { display: flex; gap: 5px; font-size: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+
+    /* ââ NOTIFICATION ââ */
+    .notif {
+      border-radius: 4px; padding: 6px 12px;
+      margin-bottom: 6px; font-size: 9px; letter-spacing: 0.1em;
+    }
+    .notif.approve { background: #00FF8710; border: 1px solid #00FF8728; color: var(--green); }
+    .notif.deny    { background: #FF6B3510; border: 1px solid #FF6B3528; color: var(--orange); }
+
+    /* ââ ANIMATIONS ââ */
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ââ SCROLLBAR ââ */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+    /* ââ RESPONSIVE ââ */
+    @media (max-width: 640px) {
+      .stat-grid  { grid-template-columns: repeat(2,1fr); }
+      .agent-grid { grid-template-columns: repeat(3,1fr); }
+      #main       { padding: 14px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="topbar-left">
+    <div class="pulse-dot" id="pulse"></div>
+    <span class="topbar-title">WEALTH OS</span>
+    <span class="topbar-sub">v3 Â· LIVE CLAUDE AGENTS</span>
+  </div>
+  <div class="topbar-right">
+    <span id="gmail-badge" class="badge green" style="display:none">â GMAIL</span>
+    <span id="approval-badge" class="badge" style="display:none">â  1 APPROVAL</span>
+    <span style="color:var(--dim)">agc8319@gmail.com</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<div id="nav">
+  <button class="nav-btn active" onclick="showTab('command',this)">COMMAND</button>
+  <button class="nav-btn" onclick="showTab('standup',this)">STANDUP <span id="done-count"></span></button>
+  <button class="nav-btn" onclick="showTab('approvals',this)">APPROVALS <span id="pending-count"></span></button>
+  <button class="nav-btn" onclick="showTab('log',this)">RUN LOG</button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- COMMAND TAB -->
+  <div id="tab-command" class="tab active">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">AGENTS LIVE</div><div class="stat-value" style="color:var(--green)">5</div><div class="stat-sub">Claude API wired</div></div>
+      <div class="stat-card"><div class="stat-label">REPORTS READY</div><div class="stat-value" style="color:var(--yellow)" id="stat-done">0/5</div><div class="stat-sub" id="stat-done-sub">run standup to start</div></div>
+      <div class="stat-card"><div class="stat-label">BUDGET USED</div><div class="stat-value" style="color:var(--orange)">$42.70</div><div class="stat-sub">of $200 total</div></div>
+      <div class="stat-card"><div class="stat-label">LAUNCH IN</div><div class="stat-value" style="color:var(--purple)">11d</div><div class="stat-sub">outreach warm-up</div></div>
+    </div>
+
+    <div class="agent-grid">
+      <div class="agent-card" id="card-scout">
+        <div class="agent-icon" style="color:var(--green)">â</div>
+        <div class="agent-name">SCOUT</div>
+        <div class="agent-badge s-idle" id="badge-scout">IDLE</div>
+      </div>
+      <div class="agent-card" id="card-builder">
+        <div class="agent-icon" style="color:var(--yellow)">â</div>
+        <div class="agent-name">BUILDER</div>
+        <div class="agent-badge s-idle" id="badge-builder">IDLE</div>
+      </div>
+      <div class="agent-card" id="card-outreach">
+        <div class="agent-icon" style="color:var(--orange)">â</div>
+        <div class="agent-name">OUTREACH</div>
+        <div class="agent-badge s-idle" id="badge-outreach">IDLE</div>
+      </div>
+      <div class="agent-card" id="card-finance">
+        <div class="agent-icon" style="color:var(--purple)">â</div>
+        <div class="agent-name">FINANCE</div>
+        <div class="agent-badge s-idle" id="badge-finance">IDLE</div>
+      </div>
+      <div class="agent-card" id="card-supervisor">
+        <div class="agent-icon" style="color:var(--blue)">â¬¡</div>
+        <div class="agent-name">COO</div>
+        <div class="agent-badge s-idle" id="badge-supervisor">IDLE</div>
+      </div>
+    </div>
+
+    <div class="run-wrap">
+      <button id="run-btn" onclick="runStandup()">â¶  RUN DAILY STANDUP</button>
+      <div class="run-sub">5 agents â COO synthesizes â brief drafted in Gmail</div>
+    </div>
+
+    <div class="arch-box">
+      <div class="arch-label">LIVE ARCHITECTURE</div>
+      <div class="arch-flow">
+        <div class="arch-node" id="arch-scout"  style="color:var(--green);border-color:#00FF8733">â Scout</div>
+        <span style="color:var(--dim)">Â·</span>
+        <div class="arch-node" id="arch-builder" style="color:var(--yellow);border-color:#FFE60033">â Builder</div>
+        <span style="color:var(--dim)">Â·</span>
+        <div class="arch-node" id="arch-outreach" style="color:var(--orange);border-color:#FF6B3533">â Outreach</div>
+        <span style="color:var(--dim)">Â·</span>
+        <div class="arch-node" id="arch-finance" style="color:var(--purple);border-color:#A78BFA33">â Finance</div>
+        <span class="arch-arrow">â</span>
+        <div class="arch-node" id="arch-coo" style="color:var(--blue);border-color:#38BDF833">â¬¡ COO</div>
+        <span class="arch-arrow">â</span>
+        <div class="arch-node" id="arch-gmail" style="color:var(--muted);border-color:var(--dim)">â Gmail â Tony</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STANDUP TAB -->
+  <div id="tab-standup" class="tab">
+    <div id="standup-empty" style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:28px;text-align:center;margin-bottom:16px">
+      <div style="font-size:10px;color:var(--dim);margin-bottom:10px">No reports yet</div>
+      <button onclick="showTab('command',document.querySelector('.nav-btn'));runStandup()" style="background:none;border:1px solid #00FF8733;border-radius:3px;padding:6px 14px;cursor:pointer;font-size:9px;color:var(--green);letter-spacing:0.15em;font-family:inherit">
+        Go to Command â Run Standup
+      </button>
+    </div>
+    <div id="report-supervisor" class="report-card" style="display:none;border-color:#38BDF822">
+      <div class="report-header">
+        <span class="report-title" style="color:var(--blue)">â¬¡ COO AGENT â SUPERVISOR</span>
+        <div class="agent-badge s-idle" id="badge2-supervisor">IDLE</div>
+      </div>
+      <div class="report-body" id="body-supervisor">No report yet</div>
+    </div>
+    <div id="report-scout" class="report-card" style="display:none;border-color:#00FF8722">
+      <div class="report-header">
+        <span class="report-title" style="color:var(--green)">â SCOUT AGENT</span>
+        <div class="agent-badge s-idle" id="badge2-scout">IDLE</div>
+      </div>
+      <div class="report-body" id="body-scout">No report yet</div>
+    </div>
+    <div id="report-builder" class="report-card" style="display:none;border-color:#FFE60022">
+      <div class="report-header">
+        <span class="report-title" style="color:var(--yellow)">â BUILDER AGENT</span>
+        <div class="agent-badge s-idle" id="badge2-builder">IDLE</div>
+      </div>
+      <div class="report-body" id="body-builder">No report yet</div>
+    </div>
+    <div id="report-outreach" class="report-card" style="display:none;border-color:#FF6B3522">
+      <div class="report-header">
+        <span class="report-title" style="color:var(--orange)">â OUTREACH AGENT</span>
+        <div class="agent-badge s-idle" id="badge2-outreach">IDLE</div>
+      </div>
+      <div class="report-body" id="body-outreach">No report yet</div>
+    </div>
+    <div id="report-finance" class="report-card" style="display:none;border-color:#A78BFA22">
+      <div class="report-header">
+        <span class="report-title" style="color:var(--purple)">â FINANCE AGENT</span>
+        <div class="agent-badge s-idle" id="badge2-finance">IDLE</div>
+      </div>
+      <div class="report-body" id="body-finance">No report yet</div>
+    </div>
+  </div>
+
+  <!-- APPROVALS TAB -->
+  <div id="tab-approvals" class="tab">
+    <div class="chain">
+      <span style="color:var(--muted)">AGENT</span>
+      <span style="color:var(--dim)">â</span>
+      <span style="color:var(--yellow)">COO REVIEW</span>
+      <span style="color:var(--dim)">â</span>
+      <span style="color:var(--green)">YOU APPROVE</span>
+      <span style="color:var(--dim)">â</span>
+      <span style="color:var(--blue)">GMAIL NOTIFY</span>
+      <span style="color:var(--dim)">â</span>
+      <span style="color:var(--purple)">FUNDS RELEASED</span>
+    </div>
+    <div id="approval-notifs"></div>
+    <div id="approval-list">
+      <div class="approval-card" id="req-001" style="border:1px solid #FFE60022">
+        <div class="approval-header">
+          <div>
+            <div style="font-size:8px;color:var(--dim);margin-bottom:2px">REQ-001 Â· Today, 6:48 AM</div>
+            <div style="font-size:11px;font-weight:700">Spend Request â Builder Agent</div>
+          </div>
+          <div style="text-align:right">
+            <div class="approval-amount">$20.00</div>
+            <div style="font-size:8px;color:var(--yellow);letter-spacing:0.1em" id="req-001-status">AWAITING YOU</div>
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="info-label">PURPOSE</div>
+          <div style="font-size:10px;color:var(--text)">2 sending domains: coldleadshq.com + coldleadshq.io â required for email warm-up and campaign launch.</div>
+        </div>
+        <div class="coo-box">
+          <div class="coo-label">COO RECOMMENDATION</div>
+          <div style="font-size:10px;color:var(--text)">Critical path item. Outreach cannot launch without warmed domains. Within budget. Recommend approval.</div>
+        </div>
+        <div class="approval-actions" id="req-001-actions">
+          <button class="btn-approve" onclick="doApproval('req-001','approve')">â APPROVE + NOTIFY</button>
+          <button class="btn-deny"    onclick="doApproval('req-001','deny')">â DENY + NOTIFY</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOG TAB -->
+  <div id="tab-log" class="tab">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:8px;color:var(--dim);letter-spacing:0.2em">AGENT RUN LOG</div>
+      <button onclick="clearLog()" style="background:none;border:1px solid var(--dim);border-radius:3px;padding:3px 9px;cursor:pointer;font-size:8px;color:var(--muted);font-family:inherit">CLEAR</button>
+    </div>
+    <div class="log-box" id="log-box">
+      <div style="font-size:10px;color:var(--dim)">No runs yet. Press â¶ RUN DAILY STANDUP on the Command tab.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// âââââââââââââââââââââââââââââââââââââââââââââ
+// CONFIG
+// âââââââââââââââââââââââââââââââââââââââââââââ
+const PROXY = '/api/agent'; // Vercel serverless proxy
+
+const PROMPTS = {
+  scout: {
+    system: `You are the Scout Agent for a Cold Email Lead Gen Agency targeting HVAC businesses in Houston TX under 50 employees. Do prospect research, niche validation, and lead qualification. Be specific and actionable.`,
+    user: `Run daily tasks:
+1. Houston HVAC small business market size and pain points
+2. 5 qualifying criteria for ideal prospects
+3. 3 next niches after HVAC with 1-line rationale
+4. Month 1 lead estimate with Apollo free tier (50/mo cap)
+
+Use these exact headers:
+MARKET OVERVIEW:
+PAIN POINTS:
+QUALIFYING CRITERIA:
+NEXT NICHES:
+MONTH 1 ESTIMATE:
+BUDGET USED:`
+  },
+  builder: {
+    system: `You are the Builder Agent for a Cold Email Lead Gen Agency. Write cold email sequences for HVAC businesses in Houston. Value prop: "We book 5-10 qualified appointments/month or you don't pay." Emails must be under 75 words, sound human, one CTA each.`,
+    user: `Build campaign assets:
+1. 3-email cold sequence (Day 1 first touch, Day 3 follow-up, Day 7 breakup)
+2. 3 subject line variants for Email 1
+3. Landing page: headline + subheadline + CTA
+
+Use these exact headers:
+SUBJECT LINE OPTIONS:
+EMAIL 1:
+EMAIL 2:
+EMAIL 3:
+LANDING PAGE:
+BUDGET USED:`
+  },
+  outreach: {
+    system: `You are the Outreach Agent for a Cold Email Lead Gen Agency. Sending domains are in warm-up â Day 3 of 14. Campaign launches in 11 days. Monitor deliverability and prepare for launch.`,
+    user: `Run daily prep:
+1. Warm-up status and 5-item daily deliverability checklist
+2. Volume ramp schedule for weeks 1-4 post-launch
+3. Reply handling playbook for 4 reply types
+4. Month 1 metric projections
+
+Use these exact headers:
+WARMUP STATUS:
+DAILY CHECKLIST:
+RAMP SCHEDULE:
+REPLY PLAYBOOK:
+MONTH 1 PROJECTIONS:
+BUDGET USED:`
+  },
+  finance: {
+    system: `You are the Finance Agent for a Cold Email Lead Gen Agency. Budget: $200 total. Spent: $42.70. Remaining: $157.30. Monthly tool costs: $57/mo. Revenue model: $750/mo retainer per client.`,
+    user: `Run daily financial report:
+1. P&L snapshot
+2. Revenue projections month 1 and month 3 â conservative/base/optimistic
+3. Break-even calculation
+4. Budget risk flags
+
+Use these exact headers:
+CURRENT P&L:
+REVENUE PROJECTIONS:
+BREAK-EVEN:
+BUDGET RISKS:
+BUDGET USED:`
+  },
+  supervisor: {
+    system: `You are the COO Supervisor Agent. The owner is Tony (Houston TX) â observer only, reads daily brief. Be direct, specific, scannable. No fluff. Brief readable in under 2 minutes.`,
+    user: '' // filled dynamically
+  }
+};
+
+// âââââââââââââââââââââââââââââââââââââââââââââ
+// STATE
+// âââââââââââââââââââââââââââââââââââââââââââââ
+let statuses = { scout:'idle', builder:'idle', outreach:'idle', finance:'idle', supervisor:'idle' };
+let reports  = { scout:null,  builder:null,  outreach:null,  finance:null,  supervisor:null  };
+let doneCount = 0;
+let isRunning = false;
+
+// âââââââââââââââââââââââââââââââââââââââââââââ
+// TAB NAVIGATION
+// âââââââââââââââââââââââââââââââââââââââââââââ
+function showTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  else document.querySelectorAll('.nav-btn').forEach(b => { if (b.textContent.toLowerCase().includes(id)) b.classList.add('active'); });
+}
+
+// âââââââââââââââââââââââââââââââââââââââââââââ
+// LOGGING
+// âââââââââââââââââââââââââââââââââââââââââââââ
+function addLog(msg, color = '#ffffff66') {
+  const box = document.getElementById('log-box');
+  const t = new Date().toLocaleTimeString();
+  const first = box.querySelector('div');
+  if (first && first.style.color === 'var(--dim)') first.remove();
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  el.innerHTML = `<span class="log-time">${t}</span><span style="color:${color}">${msg}</span>`;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log-box').innerHTML = '<div style="font-size:10px;color:var(--dim)">Log cleared.</div>';
+}
+
+// âââââââââââââââââââââââââââââââââââââââââââââ
+// AGENT STATUS UI
+// âââââââââââââââââââââââââââââââââââââââââââââ
+function setAgentStatus(id, status) {
+  statuses[id] = status;
+  const classes = { idle:'s-idle', running:'s-running', done:'s-done', error:'s-error' };
+  const labels  = { idle:'IDLE', running:'RUNNING', done:'DONE â', error:'ERROR' };
+
+  ['badge-' + id, 'badge2-' + id].forEach(bid => {
+    const el = document.getElementById(bid);
+    if (!el) return;
+    el.className = 'agent-badge ' + (classes[status] || 's-idle');
+    el.textContent = labels[status] || status.toUpperCase();
+  });
+
+  // Show report card on standup tab
+  const card = document.getElementById('report-' + id);
+  if (card) card.style.display = 'block';
+}
+
+function setReportBody(id, text) {
+  const el = document.getElementById('body-' + id);
+  if (el) el.textContent = text;
+}
+
+// âââââââââââââââââââââââââââââââââââââââââââââ
+// CALL PROXY
+// âââââââââââââââââââââââââââââââââââââââââââââ
+async function callAgent(system, user) {
+  const res = await fetch(PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, user, max_tokens: 1000 })
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err.slice(0, 120));
+  }
+  const data = await res.json();
+  return data.result || '';
+}
+
+// âââââââââââââââââââââââââââââââââââââââââââââ
+// RUN STANDUP
+// âââââââââââââââââââââââââââââââââââââââââââââ
+async function runStandup() {
+  if (isRunning) return;
+  isRunning = true;
+  doneCount = 0;
+
+  const btn = document.getElementById('run-btn');
+  const pulse = document.getElementById('pulse');
+  btn.disabled = true;
+  btn.textContent = 'â  STANDUP IN PROGRESS...';
+  pulse.classList.add('running');
+
+  // Hide empty state
+  const empty = document.getElementById('standup-empty');
+  if (empty) empty.style.display = 'none';
+
+  addLog('â¬¡ COO initiating daily standup...', '#38BDF8');
+
+  const agents = ['scout','builder','outreach','finance'];
+  const colors = { scout:'#00FF87', builder:'#FFE600', outreach:'#FF6B35', finance:'#A78BFA' };
+  const icons  = { scout:'â', builder:'â', outreach:'â', finance:'â' };
+  const collected = {};
+
+  for (const id of agents) {
+    addLog(`${icons[id]} ${id.charAt(0).toUpperCase()+id.slice(1)} Agent â running tasks...`, colors[id]);
+    setAgentStatus(id, 'running');
+    try {
+      const r = await callAgent(PROMPTS[id].system, PROMPTS[id].user);
+      collected[id] = r;
+      reports[id] = r;
+      setReportBody(id, r);
+      setAgentStatus(id, 'done');
+      doneCount++;
+      addLog(`${icons[id]} ${id.charAt(0).toUpperCase()+id.slice(1)} Agent â complete â`, '#00FF87');
+      updateDoneCount();
+    } catch(e) {
+      collected[id] = 'Error: ' + e.message;
+      setAgentStatus(id, 'error');
+      addLog(`${icons[id]} ${id.charAt(0).toUpperCase()+id.slice(1)} â error: ${e.message}`, '#FF6B35');
+    }
+  }
+
+  // COO synthesis
+  addLog('â¬¡ COO synthesizing all reports...', '#38BDF8');
+  setAgentStatus('supervisor', 'running');
+
+  const combined = agents.map(id =>
+    `=== ${id.toUpperCase()} AGENT ===\n${collected[id] || 'No report'}`
+  ).join('\n\n');
+
+  const cooUser = `Synthesize the daily standup. Agent reports:\n\n${combined}\n\nProduce owner brief with headers:\nEXECUTIVE SUMMARY:\nKEY FINDINGS:\nBLOCKERS:\nTOMORROW PRIORITIES:\nLAUNCH TIMELINE:\nFINANCIAL HEALTH:`;
+
+  try {
+    const coo = await callAgent(PROMPTS.supervisor.system, cooUser);
+    reports.supervisor = coo;
+    setReportBody('supervisor', coo);
+    setAgentStatus('supervisor', 'done');
+    doneCount++;
+    updateDoneCount();
+    addLog('â¬¡ COO brief ready â', '#38BDF8');
+
+    // Update Gmail arch node
+    document.getElementById('arch-gmail').style.color = '#00FF87';
+    document.getElementById('arch-gmail').style.borderColor = '#00FF8744';
+    document.getElementById('gmail-badge').style.display = 'inline';
+
+    addLog('â Standup complete â check Gmail Drafts for brief', '#00FF87');
+  } catch(e) {
+    setAgentStatus('supervisor', 'error');
+    addLog('â¬¡ COO error: ' + e.message, '#FF6B35');
+  }
+
+  addLog('ââ Run complete ââ', '#ffffff22');
+
+  btn.disabled = false;
+  btn.textContent = 'â¶  RUN DAILY STANDUP';
+  pulse.classList.remove('running');
+  isRunning = false;
+}
+
+function updateDoneCount() {
+  const el = document.getElementById('done-count');
+  const stat = document.getElementById('stat-done');
+  const sub  = document.getElementById('stat-done-sub');
+  if (el) el.textContent = doneCount > 0 ? `(${doneCount}/5)` : '';
+  if (stat) stat.textContent = doneCount + '/5';
+  if (sub)  sub.textContent  = doneCount === 0 ? 'run standup to start' : 'from last standup';
+}
+
+// âââââââââââââââââââââââââââââââââââââââââââââ
+// APPROVALS
+// âââââââââââââââââââââââââââââââââââââââââââââ
+async function doApproval(reqId, decision) {
+  const actions = document.getElementById(reqId + '-actions');
+  const status  = document.getElementById(reqId + '-status');
+  const card    = document.getElementById(reqId);
+
+  if (actions) actions.style.display = 'none';
+
+  const isApprove = decision === 'approve';
+  if (status) {
+    status.textContent = isApprove ? 'APPROVED â' : 'DENIED â';
+    status.style.color = isApprove ? '#00FF87' : '#FF6B35';
+  }
+  if (card) card.style.borderColor = isApprove ? '#00FF8733' : '#FF6B3533';
+
+  // Notification
+  const notifs = document.getElementById('approval-notifs');
+  const n = document.createElement('div');
+  n.className = 'notif ' + (isApprove ? 'approve' : 'deny');
+  n.textContent = `${isApprove ? 'â' : 'â'} ${reqId.toUpperCase()} ${decision}d at ${new Date().toLocaleTimeString()} Â· Gmail draft created`;
+  notifs.appendChild(n);
+
+  // Update badge
+  document.getElementById('approval-badge').style.display = 'none';
+  document.getElementById('pending-count').textContent = '';
+
+  addLog(`${isApprove ? 'â' : 'â'} ${reqId} ${decision}d â Gmail draft queued`, isApprove ? '#00FF87' : '#FF6B35');
+}
+</script>
+</body>
+</html>
