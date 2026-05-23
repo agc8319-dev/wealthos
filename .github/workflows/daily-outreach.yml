@@ -1,0 +1,94 @@
+name: Daily Cold Outreach
+
+on:
+  schedule:
+    # 9:00 AM US Eastern, Monday–Friday
+    - cron: "0 14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      industry:
+        description: "Industry to target (leave blank for auto-rotate)"
+        required: false
+        default: ""
+      companies:
+        description: "Number of companies (default: 10)"
+        required: false
+        default: "10"
+      dry_run:
+        description: "Dry run — generate content but don't save"
+        type: boolean
+        default: false
+
+jobs:
+  outreach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: outreach/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r outreach/requirements.txt
+
+      # Gmail token: stored as a GitHub secret (JSON string), written to file
+      - name: Write Gmail token
+        if: ${{ secrets.GMAIL_TOKEN != '' }}
+        run: echo '${{ secrets.GMAIL_TOKEN }}' > outreach/gmail_token.json
+
+      - name: Run daily outreach
+        env:
+          AIRTABLE_TOKEN:    ${{ secrets.AIRTABLE_TOKEN }}
+          APOLLO_API_KEY:    ${{ secrets.APOLLO_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PIPEDRIVE_API_KEY: ${{ secrets.PIPEDRIVE_API_KEY }}
+          PIPEDRIVE_DOMAIN:  ${{ secrets.PIPEDRIVE_DOMAIN }}
+          GMAIL_TOKEN_FILE:  outreach/gmail_token.json
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.industry }}" ]; then
+            ARGS="$ARGS --industry '${{ inputs.industry }}'"
+          fi
+          if [ -n "${{ inputs.companies }}" ] && [ "${{ inputs.companies }}" != "10" ]; then
+            ARGS="$ARGS --companies ${{ inputs.companies }}"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          eval python outreach/daily_outreach.py $ARGS
+
+  weekly-review:
+    runs-on: ubuntu-latest
+    # Runs every Monday at 8 AM ET so the report is ready before you start work
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: outreach/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r outreach/requirements.txt
+
+      - name: Weekly review (Mondays only)
+        if: ${{ github.event.schedule == '0 14 * * 1-5' && toJSON(github.event) != '' }}
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: |
+          DOW=$(date +%u)  # 1=Monday
+          if [ "$DOW" = "1" ]; then
+            python outreach/weekly_review.py --mark-reviewed
+          fi
